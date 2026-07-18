@@ -16,6 +16,7 @@ app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok" });
 });
 
+//Geçici olarak kullanıcıları listele
 router.get("/data", async (req, res) => {
 
     //TEST için veri tabanına kolay erişim
@@ -23,6 +24,7 @@ router.get("/data", async (req, res) => {
     res.status(200).send(response)
 })
 
+//Yeni doğrulama kodu gönder
 router.put("/otp", async (req, res) => {
     const { email } = req.body;
 
@@ -34,6 +36,7 @@ router.put("/otp", async (req, res) => {
     res.status(200).json({ success: true })
 })
 
+//Giriş Yap
 router.post("/login", async (req, res) => {
     const { username, password } = req.body;
 
@@ -50,6 +53,7 @@ router.post("/login", async (req, res) => {
     res.send(response)
 })
 
+//Kayıt ol
 router.post("/register", async (req, res) => {
     const { username, name, email, password } = req.body;
 
