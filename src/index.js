@@ -49,7 +49,7 @@ router.post("/login", async (req, res) => {
     if (!isValid) return res.status(401).json({ error: "Username or Password incorrect" });
 
     //Bilgiler doğru ise kullanııcı bilgilerini çek ve yolla
-    const [response] = await sql`SELECT uuid,name FROM users WHERE username = ${username}`
+    const [response] = await sql`SELECT uuid, name, username, post, follow, followers, bio FROM users WHERE username = ${username}`
     res.send(response)
 })
 
@@ -66,7 +66,7 @@ router.post("/register", async (req, res) => {
     const [user] = await sql`
         INSERT INTO users (username, name, email, password)
         VALUES (${username}, ${name}, ${email}, ${hash})
-        RETURNING uuid, username, name
+        RETURNING uuid, name, username, post, follow, followers, bio
     `
     //Yolla
     res.status(201).json(user)
