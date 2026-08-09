@@ -165,18 +165,16 @@ router.post("/register", async (req, res) => {
   //Yolla
   res.status(201).json(user);
 });
-//Kullanıcı var mı kontrolü
+//Kullanıcı var mı kontrolü (username unique olduğu için sadece username üzerinden bakılır)
 router.get("/check-user", async (req, res) => {
-  const { username, email } = req.query;
+  const { username } = req.query;
 
-  if (!username && !email) {
-    return res
-      .status(400)
-      .json({ error: "Username veya email parametresi gerekli" });
+  if (!username) {
+    return res.status(400).json({ error: "Username parametresi gerekli" });
   }
 
   const [{ exists }] =
-    await sql`SELECT EXISTS(SELECT 1 FROM users WHERE username = ${username} OR email = ${email}) AS exists`;
+    await sql`SELECT EXISTS(SELECT 1 FROM users WHERE username = ${username}) AS exists`;
 
   res.json({ exists });
 });
