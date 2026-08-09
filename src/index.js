@@ -3,9 +3,11 @@ import crypto from "node:crypto";
 import express from "express";
 import cors from "cors";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import sql from "./config/db.js";
 import redisClient from "./config/redis.js";
 import transporter from "./config/mailer.js";
+import { generateAccessToken, generateRefreshToken } from "./utils/tokens.js";
 const app = express();
 const router = express.Router();
 
@@ -39,7 +41,19 @@ router.put("/otp", async (req, res) => {
   //Yolla
   res.status(200).json({ success: true });
 });
+router.post("/refresh", async (req, res) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken)
+    return res.status(401).json({ error: "Refresh token required" });
 
+  try {
+    const payload = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    const accessToken = generateAccessToken({ uuid: payload.uuid });
+    res.json({ accessToken });
+  } catch (err) {
+    res.status(403).json({ error: "Invalid refresh token" });
+  }
+});
 //Giriş Yap
 router.post("/login", async (req, res) => {
   const { username, password } = req.body;
@@ -58,7 +72,10 @@ router.post("/login", async (req, res) => {
   //Bilgiler doğru ise kullanııcı bilgilerini çek ve yolla
   const [response] =
     await sql`SELECT uuid, name, username, post, follow, followers, bio FROM users WHERE username = ${username}`;
-  res.send(response);
+  const accessToken = generateAccessToken({ uuid: response.uuid });
+  const refreshToken = generateRefreshToken({ uuid: response.uuid });
+
+  res.json({ ...response, accessToken, refreshToken });
 });
 
 //Kayıt ol
