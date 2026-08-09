@@ -123,6 +123,21 @@ router.post("/me", async (req, res) => {
   }
 });
 
+router.post("/logout", async (req, res) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken)
+    return res.status(400).json({ error: "Refresh token required" });
+
+  try {
+    const payload = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    // Refresh tokenı redis'ten sil
+    await redisClient.del(`refreshToken:${payload.uuid}`);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(403).json({ error: "Invalid refresh token" });
+  }
+});
+
 //Kayıt ol
 router.post("/register", async (req, res) => {
   const { username, name, email, password, otp } = req.body;
