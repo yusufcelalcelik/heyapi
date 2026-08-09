@@ -13,7 +13,7 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok" });ƒ
+  res.status(200).json({ status: "ok" });
 });
 
 //Geçici olarak kullanıcıları listele
@@ -63,7 +63,7 @@ router.post("/login", async (req, res) => {
 
 //Kayıt ol
 router.post("/register", async (req, res) => {
-  const { username, name, email, password } = req.body;
+  const { username, name, email, password, otp } = req.body;
 
   // Kullanıcı adı ya da email zaten varsa kontrolü
   const [{ exists }] =
@@ -73,6 +73,11 @@ router.post("/register", async (req, res) => {
       .status(409)
       .json({ error: "Bu kullanıcı adı veya email zaten kullanılıyor" });
 
+  // OTP doğrulaması
+  const storedOtp = await redisClient.get(`otp:${email}`);
+  if (!storedOtp || parseInt(storedOtp) !== otp) {
+    return res.status(400).json({ error: "Geçersiz veya süresi dolmuş OTP" });
+  }
   // Eşleşme yoksa şifreyi hash leyio kaydedelim
   const hash = await bcrypt.hash(password, 10);
   const [user] = await sql`
