@@ -100,6 +100,29 @@ router.post("/login", async (req, res) => {
   res.json({ ...response, accessToken, refreshToken });
 });
 
+router.post("/me", async (req, res) => {
+  const { accessToken } = req.body;
+
+  // Access token yoksa hata döndür
+  if (!accessToken)
+    return res.status(401).json({ error: "Access token required" });
+
+  try {
+    // Access tokenı doğrula ve kullanıcı bilgilerini çek
+    const payload = jwt.verify(accessToken, process.env.JWT_SECRET);
+    const [user] =
+      await sql`SELECT uuid, name, username, post, follow, followers, bio FROM users WHERE uuid = ${payload.uuid}`;
+
+    // Kullanıcı bulunamazsa hata döndür
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Kullanıcıyı döndür
+    res.json(user);
+  } catch (err) {
+    res.status(403).json({ error: "Invalid access token" });
+  }
+});
+
 //Kayıt ol
 router.post("/register", async (req, res) => {
   const { username, name, email, password, otp } = req.body;
