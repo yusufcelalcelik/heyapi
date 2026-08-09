@@ -48,8 +48,23 @@ router.post("/refresh", async (req, res) => {
 
   try {
     const payload = jwt.verify(refreshToken, process.env.JWT_SECRET);
-    const accessToken = generateAccessToken({ uuid: payload.uuid });
-    res.json({ accessToken });
+
+    //redisten kulanıcı için kayıtlıl refresh tokenı al
+    const storedRefreshToken = await redisClient.get(
+      `refreshToken:${payload.uuid}`,
+    );
+    // gelen refresh token ile redisten alınan refresh token eşleşiyor mu kontrol et
+    if (storedRefreshToken !== refreshToken) {
+      return res.status(403).json({ error: "Invalid refresh token" });
+    }
+    //Yeni access + refresh token oluştur
+    const newAccessToken = generateAccessToken({ uuid: payload.uuid });
+    const newRefreshToken = generateRefreshToken({ uuid: payload.uuid });
+    await redisClient.set(`refreshToken:${payload.uuid}`, newRefreshToken, {
+      EX: 7 * 24 * 60 * 60,
+    });
+
+    res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
   } catch (err) {
     res.status(403).json({ error: "Invalid refresh token" });
   }
@@ -72,8 +87,15 @@ router.post("/login", async (req, res) => {
   //Bilgiler doğru ise kullanııcı bilgilerini çek ve yolla
   const [response] =
     await sql`SELECT uuid, name, username, post, follow, followers, bio FROM users WHERE username = ${username}`;
+
+  // Access ve Refresh token oluştur
   const accessToken = generateAccessToken({ uuid: response.uuid });
   const refreshToken = generateRefreshToken({ uuid: response.uuid });
+
+  // Refresh tokenı redis'e kaydet
+  await redisClient.set(`refreshToken:${response.uuid}`, refreshToken, {
+    EX: 7 * 24 * 60 * 60, // 7 gün
+  });
 
   res.json({ ...response, accessToken, refreshToken });
 });
