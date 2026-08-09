@@ -165,6 +165,21 @@ router.post("/register", async (req, res) => {
   //Yolla
   res.status(201).json(user);
 });
+//Kullanıcı var mı kontrolü
+router.get("/check-user", async (req, res) => {
+  const { username, email } = req.query;
+
+  if (!username && !email) {
+    return res
+      .status(400)
+      .json({ error: "Username veya email parametresi gerekli" });
+  }
+
+  const [{ exists }] =
+    await sql`SELECT EXISTS(SELECT 1 FROM users WHERE username = ${username} OR email = ${email}) AS exists`;
+
+  res.json({ exists });
+});
 
 app.use("/api", router);
 
