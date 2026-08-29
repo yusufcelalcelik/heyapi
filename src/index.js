@@ -6,6 +6,8 @@ import express from "express";
 import cors from "cors";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import multer from "multer";
+import sharp from "sharp";
 import sql from "./config/db.js";
 import redisClient from "./config/redis.js";
 import transporter from "./config/mailer.js";
@@ -131,6 +133,43 @@ router.post("/me", async (req, res) => {
     res.status(403).json({ error: "Invalid access token" });
   }
 });
+
+// Profil fotoğrafı yükle (her zaman uploads/avatars/<uuid>.jpg olarak kaydedilir)
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowed.includes(file.mimetype)) {
+      return cb(new Error("Sadece jpg, png veya webp yüklenebilir"));
+    }
+    cb(null, true);
+  },
+});
+
+router.post(
+  "/me/avatar",
+  authenticate,
+  avatarUpload.single("avatar"),
+  async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "avatar gerekli" });
+
+    const avatarPath = path.join(uploadsDir, "avatars", `${req.user.uuid}.jpg`);
+
+    try {
+      // Yüklenen dosyayı formatı ne olursa olsun jpg'e çevir + boyutlandır
+      await sharp(req.file.buffer)
+        .resize(512, 512, { fit: "cover" })
+        .jpeg({ quality: 80 })
+        .toFile(avatarPath);
+
+      res.status(200).json({ avatarUrl: `/uploads/avatars/${req.user.uuid}.jpg` });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Fotoğraf işlenemedi" });
+    }
+  },
+);
 
 router.post("/logout", async (req, res) => {
   const { refreshToken } = req.body;
