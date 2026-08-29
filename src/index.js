@@ -8,6 +8,7 @@ import sql from "./config/db.js";
 import redisClient from "./config/redis.js";
 import transporter from "./config/mailer.js";
 import { generateAccessToken, generateRefreshToken } from "./utils/tokens.js";
+import { authenticate } from "./middleware/auth.js";
 const app = express();
 const router = express.Router();
 
@@ -177,6 +178,62 @@ router.get("/check-user", async (req, res) => {
     await sql`SELECT EXISTS(SELECT 1 FROM users WHERE username = ${username}) AS exists`;
 
   res.json({ exists });
+});
+
+// Konuşmaları listele (sadece giriş yapan kullanıcının katıldığı sohbetler)
+router.get("/conversations", authenticate, async (req, res) => {
+    const conversations = await sql`
+      SELECT c.*
+      FROM conversations c
+      JOIN conversation_participants cp ON cp.conversation_id = c.id
+      WHERE cp.user_uuid = ${req.user.uuid}
+      ORDER BY c.created_at DESC
+    `;
+    res.status(200).json(conversations);
+});
+
+// Bir sohbetteki mesajları listele (önce kullanıcının o sohbete katılımcı olduğu doğrulanır)
+router.get("/conversations/:id/messages", authenticate, async (req, res) => {
+  const { id } = req.params;
+
+  const [participant] = await sql`
+    SELECT 1 FROM conversation_participants
+    WHERE conversation_id = ${id} AND user_uuid = ${req.user.uuid}
+  `;
+  if (!participant)
+    return res.status(403).json({ error: "Bu sohbete erişimin yok" });
+
+  const messages = await sql`
+    SELECT m.*
+    FROM messages m
+    WHERE m.conversation_id = ${id}
+    ORDER BY m.created_at ASC
+  `;
+  res.status(200).json(messages);
+});
+
+// Mesaj gönder (önce kullanıcının o sohbete katılımcı olduğu doğrulanır)
+router.post("/conversations/:id/messages", authenticate, async (req, res) => {
+  const { id } = req.params;
+  const { content } = req.body;
+
+  if (!content) return res.status(400).json({ error: "content gerekli" });
+
+  const [participant] = await sql`
+    SELECT 1 FROM conversation_participants
+    WHERE conversation_id = ${id} AND user_uuid = ${req.user.uuid}
+  `;
+  if (!participant)
+    return res.status(403).json({ error: "Bu sohbete erişimin yok" });
+
+  // Mesajı ekle
+  const [message] = await sql`
+    INSERT INTO messages (conversation_id, sender_uuid, content)
+    VALUES (${id}, ${req.user.uuid}, ${content})
+    RETURNING *
+  `;
+
+  res.status(201).json(message);
 });
 
 app.use("/api", router);
