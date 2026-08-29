@@ -1,5 +1,7 @@
 import "dotenv/config";
 import crypto from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
 import bcrypt from "bcrypt";
@@ -12,8 +14,13 @@ import { authenticate } from "./middleware/auth.js";
 const app = express();
 const router = express.Router();
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const uploadsDir = path.join(__dirname, "..", "uploads");
+
 app.use(cors());
 app.use(express.json());
+// Yüklenen dosyaları (avatar vb.) herkese açık servis et
+app.use("/uploads", express.static(uploadsDir));
 
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
