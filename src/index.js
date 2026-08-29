@@ -288,9 +288,9 @@ router.get("/conversations/:id/messages", authenticate, async (req, res) => {
     return res.status(403).json({ error: "Bu sohbete erişimin yok" });
 
   const messages = await sql`
-  SELECT id, sender_uuid, content, created_at, updated_at, deleted_at
+  SELECT id, sender_uuid, content, created_at, updated_at
   FROM messages
-  WHERE conversation_id = ${id}
+  WHERE conversation_id = ${id} AND deleted_at IS NULL
   ORDER BY created_at ASC
 `;
 
@@ -325,7 +325,58 @@ router.post("/conversations/:id/messages", authenticate, async (req, res) => {
 
   res.status(201).json(message);
 });
+router.delete("/conversations/:id/messages/:messageId", authenticate, async (req, res) => {
+  const { id, messageId } = req.params;
 
+  const [participant] = await sql`
+    SELECT 1 FROM conversation_participants
+    WHERE conversation_id = ${id} AND user_uuid = ${req.user.uuid}
+  `;
+  if (!participant)
+    return res.status(403).json({ error: "Bu sohbete erişimin yok" });
+
+  // Mesajı sil (soft delete)
+  const [message] = await sql`
+    UPDATE messages
+    SET deleted_at = NOW()
+    WHERE id = ${messageId} AND sender_uuid = ${req.user.uuid}
+    RETURNING *
+  `;
+
+  if (!message) {
+    return res.status(404).json({ error: "Mesaj bulunamadı veya silme yetkin yok" });
+  }
+
+  res.status(200).json({ success: true });
+});
+
+// Mesajı düzenle (sadece mesajı gönderen kişi düzenleyebilir)
+router.patch("/conversations/:id/messages/:messageId", authenticate, async (req, res) => {
+  const { id, messageId } = req.params;
+  const { content } = req.body;
+
+  if (!content) return res.status(400).json({ error: "content gerekli" });
+
+  const [participant] = await sql`
+    SELECT 1 FROM conversation_participants
+    WHERE conversation_id = ${id} AND user_uuid = ${req.user.uuid}
+  `;
+  if (!participant)
+    return res.status(403).json({ error: "Bu sohbete erişimin yok" });
+
+  const [message] = await sql`
+    UPDATE messages
+    SET content = ${content}, updated_at = NOW()
+    WHERE id = ${messageId} AND conversation_id = ${id} AND sender_uuid = ${req.user.uuid} AND deleted_at IS NULL
+    RETURNING id, sender_uuid, content, created_at, updated_at
+  `;
+
+  if (!message) {
+    return res.status(404).json({ error: "Mesaj bulunamadı veya düzenleme yetkin yok" });
+  }
+
+  res.status(200).json(message);
+});
 app.use("/api", router);
 
 app.use((err, req, res, next) => {
