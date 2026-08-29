@@ -104,27 +104,15 @@ router.post("/login", async (req, res) => {
   res.json({ ...response, accessToken, refreshToken });
 });
 
-router.post("/me", async (req, res) => {
-  const { accessToken } = req.body;
+router.get("/me", authenticate, async (req, res) => {
+  const [user] =
+    await sql`SELECT uuid, name, username, post, follow, followers, bio FROM users WHERE uuid = ${req.user.uuid}`;
 
-  // Access token yoksa hata döndür
-  if (!accessToken)
-    return res.status(401).json({ error: "Access token required" });
+  // Kullanıcı bulunamazsa hata döndür
+  if (!user) return res.status(404).json({ error: "User not found" });
 
-  try {
-    // Access tokenı doğrula ve kullanıcı bilgilerini çek
-    const payload = jwt.verify(accessToken, process.env.JWT_SECRET);
-    const [user] =
-      await sql`SELECT uuid, name, username, post, follow, followers, bio FROM users WHERE uuid = ${payload.uuid}`;
-
-    // Kullanıcı bulunamazsa hata döndür
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    // Kullanıcıyı döndür
-    res.json(user);
-  } catch (err) {
-    res.status(403).json({ error: "Invalid access token" });
-  }
+  // Kullanıcıyı döndür
+  res.json(user);
 });
 
 // Profil fotoğrafı yükle (her zaman uploads/avatars/<uuid>.jpg olarak kaydedilir)
