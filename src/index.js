@@ -28,13 +28,6 @@ app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-//Geçici olarak kullanıcıları listele
-router.get("/data", async (req, res) => {
-  //TEST için veri tabanına kolay erişim
-  const response = await sql`SELECT * FROM users`;
-  res.status(200).send(response);
-});
-
 //Yeni doğrulama kodu gönder
 router.put("/otp", async (req, res) => {
   const { email } = req.body;
