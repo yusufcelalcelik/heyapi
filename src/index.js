@@ -182,14 +182,14 @@ router.get("/check-user", async (req, res) => {
 
 // Konuşmaları listele (sadece giriş yapan kullanıcının katıldığı sohbetler)
 router.get("/conversations", authenticate, async (req, res) => {
-    const conversations = await sql`
+  const conversations = await sql`
       SELECT c.*
       FROM conversations c
       JOIN conversation_participants cp ON cp.conversation_id = c.id
       WHERE cp.user_uuid = ${req.user.uuid}
       ORDER BY c.created_at DESC
     `;
-    res.status(200).json(conversations);
+  res.status(200).json(conversations);
 });
 
 // Bir sohbetteki mesajları listele (önce kullanıcının o sohbete katılımcı olduğu doğrulanır)
@@ -204,12 +204,18 @@ router.get("/conversations/:id/messages", authenticate, async (req, res) => {
     return res.status(403).json({ error: "Bu sohbete erişimin yok" });
 
   const messages = await sql`
-    SELECT m.*
-    FROM messages m
-    WHERE m.conversation_id = ${id}
-    ORDER BY m.created_at ASC
-  `;
-  res.status(200).json(messages);
+  SELECT id, sender_uuid, content, created_at, updated_at, deleted_at
+  FROM messages
+  WHERE conversation_id = ${id}
+  ORDER BY created_at ASC
+`;
+
+  const withFromMe = messages.map((m) => ({
+    ...m,
+    fromMe: m.sender_uuid === req.user.uuid,
+  }));
+
+  res.status(200).json(withFromMe);
 });
 
 // Mesaj gönder (önce kullanıcının o sohbete katılımcı olduğu doğrulanır)
