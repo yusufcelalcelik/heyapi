@@ -26,15 +26,17 @@ Tüm endpoint'lerin başına `/api` prefix'i eklenir (örn. `POST /api/login`). 
 
 ### Kimlik Doğrulama
 
+Refresh token gerektiren endpoint'lerde token `Authorization: Bearer <refreshToken>` headerından okunur (access token ile aynı pattern).
+
 | Method | Path | Açıklama |
 |---|---|---|
-| `PUT` | `/otp` | E-postaya doğrulama kodu gönderir |
-| `POST` | `/register` | Yeni kullanıcı kaydı oluşturur (OTP doğrulaması ile) |
-| `POST` | `/login` | Kullanıcı adı/şifre ile giriş yapar, access + refresh token döner |
-| `POST` | `/refresh` | Refresh token ile yeni bir access + refresh token çifti üretir (refresh token `Authorization` headerından okunur) |
-| `POST` | `/logout` | Refresh tokenı Redis'ten siler, oturumu sonlandırır |
+| `POST` | `/otp` | E-postaya doğrulama kodu gönderir |
+| `POST` | `/users` | Yeni kullanıcı kaydı oluşturur (OTP doğrulaması ile) |
+| `GET` | `/users/exists` | Bir kullanıcı adının kullanılıp kullanılmadığını kontrol eder (`?username=...`) |
+| `POST` | `/sessions` | Kullanıcı adı/şifre ile giriş yapar (oturum oluşturur), access + refresh token döner |
+| `PATCH` | `/sessions` | Refresh token ile yeni bir access + refresh token çifti üretir (oturumu yeniler) |
+| `DELETE` | `/sessions` | Refresh tokenı Redis'ten siler, oturumu sonlandırır |
 | 🔒 `GET` | `/me` | Giriş yapan kullanıcının profil bilgilerini döner |
-| `GET` | `/check-user` | Bir kullanıcı adının kullanılıp kullanılmadığını kontrol eder |
 
 ### Profil
 
