@@ -29,7 +29,7 @@ app.get("/health", (req, res) => {
 });
 
 //Yeni doğrulama kodu gönder
-router.put("/otp", async (req, res) => {
+router.post("/otp", async (req, res) => {
   const { email } = req.body;
 
   //Doğrulama kodunu oluştur ve set et
@@ -44,7 +44,7 @@ router.put("/otp", async (req, res) => {
   //Yolla
   res.status(200).json({ success: true });
 });
-router.post("/refresh", async (req, res) => {
+router.patch("/sessions", async (req, res) => {
   const authHeader = req.headers["authorization"];
   const refreshToken = authHeader && authHeader.split(" ")[1];
   if (!refreshToken)
@@ -74,7 +74,7 @@ router.post("/refresh", async (req, res) => {
   }
 });
 //Giriş Yap
-router.post("/login", async (req, res) => {
+router.post("/sessions", async (req, res) => {
   const { username, password } = req.body;
 
   // Kullanıcı bulunur
@@ -152,8 +152,9 @@ router.post(
   },
 );
 
-router.post("/logout", async (req, res) => {
-  const { refreshToken } = req.body;
+router.delete("/sessions", async (req, res) => {
+  const authHeader = req.headers["authorization"];
+  const refreshToken = authHeader && authHeader.split(" ")[1];
   if (!refreshToken)
     return res.status(400).json({ error: "Refresh token required" });
 
@@ -168,7 +169,7 @@ router.post("/logout", async (req, res) => {
 });
 
 //Kayıt ol
-router.post("/register", async (req, res) => {
+router.post("/users", async (req, res) => {
   const { username, name, email, password, otp } = req.body;
 
   // Kullanıcı adı ya da email zaten varsa kontrolü
@@ -195,7 +196,7 @@ router.post("/register", async (req, res) => {
   res.status(201).json(user);
 });
 //Kullanıcı var mı kontrolü (username unique olduğu için sadece username üzerinden bakılır)
-router.get("/check-user", async (req, res) => {
+router.get("/users/exists", async (req, res) => {
   const { username } = req.query;
 
   if (!username) {
