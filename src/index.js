@@ -183,13 +183,50 @@ router.get("/check-user", async (req, res) => {
 // Konuşmaları listele (sadece giriş yapan kullanıcının katıldığı sohbetler)
 router.get("/conversations", authenticate, async (req, res) => {
   const conversations = await sql`
-      SELECT c.*
-      FROM conversations c
-      JOIN conversation_participants cp ON cp.conversation_id = c.id
-      WHERE cp.user_uuid = ${req.user.uuid}
-      ORDER BY c.created_at DESC
-    `;
-  res.status(200).json(conversations);
+    SELECT
+      c.id,
+      c.is_group,
+      c.created_at,
+      other.uuid AS other_uuid,
+      other.username AS other_username,
+      other.name AS other_name,
+      lm.id AS last_message_id,
+      lm.content AS last_message_content,
+      lm.sender_uuid AS last_message_sender_uuid,
+      lm.created_at AS last_message_created_at
+    FROM conversations c
+    JOIN conversation_participants cp ON cp.conversation_id = c.id AND cp.user_uuid = ${req.user.uuid}
+    LEFT JOIN conversation_participants other_cp
+      ON other_cp.conversation_id = c.id AND other_cp.user_uuid != ${req.user.uuid}
+    LEFT JOIN users other ON other.uuid = other_cp.user_uuid
+    LEFT JOIN LATERAL (
+      SELECT id, content, sender_uuid, created_at
+      FROM messages
+      WHERE conversation_id = c.id AND deleted_at IS NULL
+      ORDER BY created_at DESC
+      LIMIT 1
+    ) lm ON true
+    ORDER BY c.created_at DESC
+  `;
+
+  const result = conversations.map((c) => ({
+    id: c.id,
+    is_group: c.is_group,
+    created_at: c.created_at,
+    otherUser: c.other_uuid
+      ? { uuid: c.other_uuid, username: c.other_username, name: c.other_name }
+      : null,
+    lastMessage: c.last_message_id
+      ? {
+          id: c.last_message_id,
+          content: c.last_message_content,
+          created_at: c.last_message_created_at,
+          fromMe: c.last_message_sender_uuid === req.user.uuid,
+        }
+      : null,
+  }));
+
+  res.status(200).json(result);
 });
 
 // Bir sohbetteki mesajları listele (önce kullanıcının o sohbete katılımcı olduğu doğrulanır)
