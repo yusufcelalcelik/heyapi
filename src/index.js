@@ -43,7 +43,8 @@ router.put("/otp", async (req, res) => {
   res.status(200).json({ success: true });
 });
 router.post("/refresh", async (req, res) => {
-  const { refreshToken } = req.body;
+  const authHeader = req.headers["authorization"];
+  const refreshToken = authHeader && authHeader.split(" ")[1];
   if (!refreshToken)
     return res.status(401).json({ error: "Refresh token required" });
 
