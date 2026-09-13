@@ -11,8 +11,12 @@ import sharp from "sharp";
 import sql from "./config/db.js";
 import redisClient from "./config/redis.js";
 import transporter from "./config/mailer.js";
+import { ensureSchema } from "./config/schema.js";
 import { generateAccessToken, generateRefreshToken } from "./utils/tokens.js";
 import { authenticate } from "./middleware/auth.js";
+
+await ensureSchema(sql);
+
 const app = express();
 const router = express.Router();
 
