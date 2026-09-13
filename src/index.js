@@ -366,8 +366,11 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Sunucu hatası" });
 });
 
-const PORT = process.env.PORT;
+// Coolify'nin proxy'si uygulamanın sabit bir porta bağlanmasını bekler.
+// PORT tanımlanmadığında Node rastgele bir port seçebildiğinden proxy 503
+// döndürür; bu yüzden konteyner varsayılanı açıkça 3000'dir.
+const PORT = Number.parseInt(process.env.PORT, 10) || 3000;
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
